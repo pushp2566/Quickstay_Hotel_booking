@@ -1,8 +1,6 @@
-# Quickstay_Hotel_booking
 
-Sure! Here's a well-structured `README.md` content for your **hotel booking project** that includes frontend and backend features, technologies, setup instructions, and deployment sections. You can adjust specific details as per your actual project name and links.
 
----
+
 
 # 🏨 Hotel Booking Platform
 
