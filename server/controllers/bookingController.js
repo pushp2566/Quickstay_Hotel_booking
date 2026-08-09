@@ -10,8 +10,8 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
   try {
     const bookings = await Booking.find({
       room,
-      checkInDate: { $lte: checkOutDate },
-      checkOutDate: { $gte: checkInDate },
+      checkInDate: { $lt: checkOutDate },
+      checkOutDate: { $gt: checkInDate },
     });
 
     const isAvailable = bookings.length === 0;
@@ -27,6 +27,11 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
 export const checkAvailabilityAPI = async (req, res) => {
   try {
     const { room, checkInDate, checkOutDate } = req.body;
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    if (!room || Number.isNaN(checkIn.valueOf()) || Number.isNaN(checkOut.valueOf()) || checkOut <= checkIn) {
+      return res.status(400).json({ success: false, message: "Enter valid check-in and check-out dates" });
+    }
     const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
     res.json({ success: true, isAvailable });
   } catch (error) {
@@ -39,9 +44,15 @@ export const checkAvailabilityAPI = async (req, res) => {
 export const createBooking = async (req, res) => {
   try {
 
-    const { room, checkInDate, checkOutDate, guests } = req.body;
+    const { room, checkInDate, checkOutDate, guests, paymentMethod = "Pay At Hotel" } = req.body;
 
     const user = req.user._id;
+
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    if (!room || Number.isNaN(checkIn.valueOf()) || Number.isNaN(checkOut.valueOf()) || checkOut <= checkIn || !Number.isInteger(Number(guests)) || Number(guests) < 1) {
+      return res.status(400).json({ success: false, message: "Enter valid booking details" });
+    }
 
     // Before Booking Check Availability
     const isAvailable = await checkAvailability({
@@ -56,11 +67,12 @@ export const createBooking = async (req, res) => {
 
     // Get totalPrice from Room
     const roomData = await Room.findById(room).populate("hotel");
+    if (!roomData || !roomData.hotel) {
+      return res.status(404).json({ success: false, message: "Room not found" });
+    }
     let totalPrice = roomData.pricePerNight;
 
     // Calculate totalPrice based on nights
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
     const timeDiff = checkOut.getTime() - checkIn.getTime();
     const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
@@ -74,6 +86,7 @@ export const createBooking = async (req, res) => {
       checkInDate,
       checkOutDate,
       totalPrice,
+      paymentMethod,
     });
 
     const mailOptions = {
@@ -96,7 +109,11 @@ export const createBooking = async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error("Booking email failed:", emailError.message);
+    }
 
     res.json({ success: true, message: "Booking created successfully" });
 
@@ -145,7 +162,16 @@ export const stripePayment = async (req, res) => {
     const { bookingId } = req.body;
 
     const booking = await Booking.findById(bookingId);
+    if (!booking || booking.user !== req.user._id) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+    if (booking.isPaid) {
+      return res.status(400).json({ success: false, message: "Booking is already paid" });
+    }
     const roomData = await Room.findById(booking.room).populate("hotel");
+    if (!roomData?.hotel) {
+      return res.status(404).json({ success: false, message: "Room not found" });
+    }
     const totalPrice = booking.totalPrice;
 
     const { origin } = req.headers;

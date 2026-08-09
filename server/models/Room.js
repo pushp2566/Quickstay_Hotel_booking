@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
+import { randomUUID } from "node:crypto";
 const { Schema } = mongoose;
 
 const roomSchema = new Schema(
   {
+    _id: { type: String, default: randomUUID },
     hotel: { type: String, ref: "Hotel", required: true },
     roomType: { type: String, required: true }, // "Single", "Double"
     pricePerNight: { type: Number, required: true },

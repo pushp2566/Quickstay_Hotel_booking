@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { assets } from '../../assets/assets'
 import Title from '../../components/Title';
 import { useAppContext } from '../../context/AppContext';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
 
-    const { currency, user, getToken, toast, axios } = useAppContext();
+    const { currency, user, getToken, axios } = useAppContext();
 
     const [dashboardData, setDashboardData] = useState({
         bookings: [],
@@ -29,6 +30,11 @@ const Dashboard = () => {
     useEffect(() => {
         if (user) {
             fetchDashboardData();
+            
+            // Real-time monitoring: refresh data every 30 seconds
+            // const interval = setInterval(fetchDashboardData, 30000);
+            
+            // return () => clearInterval(interval);
         }
     }, [user]);
 

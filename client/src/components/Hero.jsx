@@ -4,24 +4,28 @@ import { useAppContext } from '../context/AppContext';
 
 const Hero = () => {
 
-    const { navigate, getToken, axios, setSearchedCities } = useAppContext();
+    const { navigate, getToken, axios, setSearchedCities, user } = useAppContext();
     const [destination, setDestination] = useState("");
 
     const onSearch = async (e) => {
         e.preventDefault();
-        navigate(`/rooms?destination=${destination}`);
-        // call api to save recent searched city
-        await axios.post('/api/user/store-recent-search', { recentSearchedCity: destination }, {
-            headers: { Authorization: `Bearer ${await getToken()}` }
-        });
-        // add destination to searchedCities max 3 recent searched cities
-        setSearchedCities((prevSearchedCities) => {
-            const updatedSearchedCities = [...prevSearchedCities, destination];
-            if (updatedSearchedCities.length > 3) {
-                updatedSearchedCities.shift();
+        const params = new URLSearchParams({ destination });
+        navigate(`/rooms?${params.toString()}`);
+
+        if (user) {
+            try {
+                await axios.post('/api/user/store-recent-search', { recentSearchedCity: destination }, {
+                    headers: { Authorization: `Bearer ${await getToken()}` }
+                });
+                setSearchedCities((previousCities) => {
+                    const updatedCities = [...previousCities.filter((city) => city !== destination), destination];
+                    return updatedCities.slice(-3);
+                });
+            } catch (error) {
+                // Searching must still work if updating search history fails.
+                console.error("Could not save recent search:", error.message);
             }
-            return updatedSearchedCities;
-        });
+        }
     }
 
     return (

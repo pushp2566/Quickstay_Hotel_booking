@@ -11,6 +11,9 @@ export const createRoom = async (req, res) => {
     const hotel = await Hotel.findOne({ owner: req.auth.userId });
 
     if (!hotel) return res.json({ success: false, message: "No Hotel found" });
+    if (!req.files?.length) {
+      return res.status(400).json({ success: false, message: "At least one room image is required" });
+    }
 
     // upload images to cloudinary
     const uploadImages = req.files.map(async (file) => {
@@ -58,6 +61,9 @@ export const getRooms = async (req, res) => {
 export const getOwnerRooms = async (req, res) => {
   try {
     const hotelData = await Hotel.findOne({ owner: req.auth.userId });
+    if (!hotelData) {
+      return res.status(404).json({ success: false, message: "No Hotel found" });
+    }
     const rooms = await Room.find({ hotel: hotelData._id.toString() }).populate("hotel");
     res.json({ success: true, rooms });
   } catch (error) {
@@ -73,6 +79,15 @@ export const toggleRoomAvailability = async (req, res) => {
   try {
     const { roomId } = req.body;
     const roomData = await Room.findById(roomId);
+    if (!roomData) {
+      return res.status(404).json({ success: false, message: "Room not found" });
+    }
+
+    const hotel = await Hotel.findOne({ _id: roomData.hotel, owner: req.user._id });
+    if (!hotel) {
+      return res.status(403).json({ success: false, message: "You cannot update this room" });
+    }
+
     roomData.isAvailable = !roomData.isAvailable;
     await roomData.save();
     res.json({ success: true, message: "Room availability Updated" });
