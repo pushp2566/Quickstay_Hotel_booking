@@ -1,5 +1,5 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { toast } from 'react-hot-toast'
 import { useNavigate } from "react-router-dom";
@@ -29,23 +29,31 @@ export const AppProvider = ({ children }) => {
         "Pool Access": assets.poolIcon,
     };
 
-    const fetchUser = async () => {
+    const fetchUser = useCallback(async () => {
         try {
-            const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${await getToken()}` } })
+            const token = await getToken();
+            if (!token) return;
+            const { data } = await axios.get('/api/user', { headers: { Authorization: `Bearer ${token}` } })
             if (data.success) {
                 setIsOwner(data.role === "hotelOwner");
                 setSearchedCities(data.recentSearchedCities)
             } else {
-                // Retry Fetching User Details after 5 seconds
-                // Useful when user creates account using email & password
+                // Retry Fetching User Details after 2 seconds
                 setTimeout(() => {
                     fetchUser();
                 }, 2000);
             }
         } catch (error) {
-            toast.error(error.message)
+            // Suppress 401 popups when user session is initializing
+            if (error.response?.status === 401) {
+                setTimeout(() => {
+                    fetchUser();
+                }, 2000);
+            } else {
+                toast.error(error.message);
+            }
         }
-    }
+    }, [getToken]);
 
     const fetchRooms = async () => {
         try {
@@ -65,7 +73,7 @@ export const AppProvider = ({ children }) => {
         if (user) {
             fetchUser();
         }
-    }, [user]);
+    }, [user, fetchUser]);
 
     useEffect(() => {
         fetchRooms();

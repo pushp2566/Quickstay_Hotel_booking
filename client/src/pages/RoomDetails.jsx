@@ -66,10 +66,12 @@ const RoomDetails = () => {
     }
 
     useEffect(() => {
-        const room = rooms.find(room => room._id === id);
-        room && setRoom(room);
-        room && setMainImage(room.images[0]);
-    }, [rooms]);
+        const foundRoom = rooms.find(item => item._id === id);
+        if (foundRoom) {
+            setRoom(foundRoom);
+            setMainImage(foundRoom.images?.[0] || null);
+        }
+    }, [rooms, id]);
 
     return room && (
         <div className='py-28 md:py-35 px-4 md:px-16 lg:px-24 xl:px-32'>
@@ -125,12 +127,12 @@ const RoomDetails = () => {
                 <div className='flex flex-col flex-wrap md:flex-row items-start md:items-center gap-4 md:gap-10 text-gray-500'>
                     <div className='flex flex-col'>
                         <label htmlFor='checkInDate' className='font-medium'>Check-In</label>
-                        <input onChange={(e) => setCheckInDate(e.target.value)} id='checkInDate' type='date' min={new Date().toISOString().split('T')[0]} className='w-full rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none' placeholder='Check-In' required />
+                        <input onChange={(e) => { setCheckInDate(e.target.value); setIsAvailable(false); }} id='checkInDate' type='date' min={new Date().toISOString().split('T')[0]} className='w-full rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none' placeholder='Check-In' required />
                     </div>
                     <div className='w-px h-15 bg-gray-300/70 max-md:hidden'></div>
                     <div className='flex flex-col'>
                         <label htmlFor='checkOutDate' className='font-medium'>Check-Out</label>
-                        <input onChange={(e) => setCheckOutDate(e.target.value)} id='checkOutDate' type='date' min={checkInDate} disabled={!checkInDate} className='w-full rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none' placeholder='Check-Out' required />
+                        <input onChange={(e) => { setCheckOutDate(e.target.value); setIsAvailable(false); }} id='checkOutDate' type='date' min={checkInDate} disabled={!checkInDate} className='w-full rounded border border-gray-300 px-3 py-2 mt-1.5 outline-none' placeholder='Check-Out' required />
                     </div>
                     <div className='w-px h-15 bg-gray-300/70 max-md:hidden'></div>
                     <div className='flex flex-col'>

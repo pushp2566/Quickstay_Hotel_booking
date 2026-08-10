@@ -8,7 +8,8 @@ export const createRoom = async (req, res) => {
   try {
     const { roomType, pricePerNight, amenities } = req.body;
 
-    const hotel = await Hotel.findOne({ owner: req.auth.userId });
+    const ownerId = req.user?._id || req.auth?.userId;
+    const hotel = await Hotel.findOne({ owner: ownerId });
 
     if (!hotel) return res.json({ success: false, message: "No Hotel found" });
     if (!req.files?.length) {
@@ -24,11 +25,18 @@ export const createRoom = async (req, res) => {
     // Wait for all uploads to complete
     const images = await Promise.all(uploadImages);
 
+    let parsedAmenities = [];
+    try {
+      parsedAmenities = typeof amenities === "string" ? JSON.parse(amenities) : amenities;
+    } catch {
+      parsedAmenities = [];
+    }
+
     await Room.create({
       hotel: hotel._id,
       roomType,
       pricePerNight: +pricePerNight,
-      amenities: JSON.parse(amenities),
+      amenities: parsedAmenities,
       images,
     });
 
@@ -50,7 +58,9 @@ export const getRooms = async (req, res) => {
           select: 'image',
         },
       }).sort({ createdAt: -1 });
-    res.json({ success: true, rooms });
+
+    const validRooms = rooms.filter((room) => room.hotel !== null);
+    res.json({ success: true, rooms: validRooms });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -60,9 +70,10 @@ export const getRooms = async (req, res) => {
 // GET /api/rooms/owner
 export const getOwnerRooms = async (req, res) => {
   try {
-    const hotelData = await Hotel.findOne({ owner: req.auth.userId });
+    const ownerId = req.user?._id || req.auth?.userId;
+    const hotelData = await Hotel.findOne({ owner: ownerId });
     if (!hotelData) {
-      return res.status(404).json({ success: false, message: "No Hotel found" });
+      return res.json({ success: false, message: "No Hotel found", rooms: [] });
     }
     const rooms = await Room.find({ hotel: hotelData._id.toString() }).populate("hotel");
     res.json({ success: true, rooms });

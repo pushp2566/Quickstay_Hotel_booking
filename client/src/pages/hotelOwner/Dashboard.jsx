@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { assets } from '../../assets/assets'
 import Title from '../../components/Title';
 import { useAppContext } from '../../context/AppContext';
@@ -14,7 +14,7 @@ const Dashboard = () => {
         totalRevenue: 0,
     });
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
         try {
             const { data } = await axios.get('/api/bookings/hotel', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
@@ -25,18 +25,13 @@ const Dashboard = () => {
         } catch (error) {
             toast.error(error.message)
         }
-    }
+    }, [axios, getToken]);
 
     useEffect(() => {
         if (user) {
             fetchDashboardData();
-            
-            // Real-time monitoring: refresh data every 30 seconds
-            // const interval = setInterval(fetchDashboardData, 30000);
-            
-            // return () => clearInterval(interval);
         }
-    }, [user]);
+    }, [user, fetchDashboardData]);
 
     return (
         <div>
@@ -74,8 +69,8 @@ const Dashboard = () => {
                         {
                             dashboardData.bookings.map((item, index) => (
                                 <tr key={index}>
-                                    <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>{item.user.username}</td>
-                                    <td className='py-3 px-4 text-gray-400 border-t border-gray-300 max-sm:hidden'>{item.room.roomType}</td>
+                                    <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>{item.user?.username || 'User'}</td>
+                                    <td className='py-3 px-4 text-gray-400 border-t border-gray-300 max-sm:hidden'>{item.room?.roomType || 'Room'}</td>
                                     <td className='py-3 px-4 text-gray-400 border-t border-gray-300 text-center'>{currency} {item.totalPrice}</td>
                                     <td className='py-3 px-4  border-t border-gray-300 flex'>
                                         <button className={`py-1 px-3 text-xs rounded-full mx-auto ${item.isPaid ? "bg-green-200 text-green-600" : "bg-amber-200 text-yellow-600"}`}>

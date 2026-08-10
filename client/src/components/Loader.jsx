@@ -9,11 +9,12 @@ const Loader = () => {
 
   useEffect(() => {
     if (nextUrl) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         navigate(`/${nextUrl}`);
       }, 8000);
+      return () => clearTimeout(timer);
     }
-  }, [nextUrl]);
+  }, [nextUrl, navigate]);
 
   return (
     <div className="flex justify-center items-center h-screen">

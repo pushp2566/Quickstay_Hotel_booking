@@ -9,7 +9,7 @@ const ListRoom = () => {
     const [rooms, setRooms] = React.useState([])
 
     // Fetch Rooms of the Hotel Owner
-    const fetchRooms = async () => {
+    const fetchRooms = React.useCallback(async () => {
         try {
             const { data } = await axios.get('/api/rooms/owner', { headers: { Authorization: `Bearer ${await getToken()}` } })
             if (data.success) {
@@ -21,7 +21,7 @@ const ListRoom = () => {
         } catch (error) {
             toast.error(error.message)
         }
-    }
+    }, [axios, getToken]);
 
     // Toggle Availability of the Room
     const toggleAvailability = async (roomId) => {
@@ -39,7 +39,7 @@ const ListRoom = () => {
         if (user) {
             fetchRooms()
         }
-    }, [user])
+    }, [user, fetchRooms])
 
     return (
         <div>
