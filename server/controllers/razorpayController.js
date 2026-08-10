@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import razorpayInstance from "../configs/razorpay.js";
+import { getRazorpayInstance } from "../configs/razorpay.js";
 import Booking from "../models/Booking.js";
 import Room from "../models/Room.js";
 
@@ -10,9 +10,13 @@ export const createRazorpayOrder = async (req, res) => {
     const { bookingId } = req.body;
     const userId = req.user?._id || req.auth?.userId;
 
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: "Booking ID is required" });
+    }
+
     const booking = await Booking.findById(bookingId);
     if (!booking || booking.user !== userId) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+      return res.status(404).json({ success: false, message: "Booking not found or unauthorized" });
     }
 
     if (booking.isPaid) {
@@ -21,23 +25,29 @@ export const createRazorpayOrder = async (req, res) => {
 
     const roomData = await Room.findById(booking.room).populate("hotel");
     if (!roomData?.hotel) {
-      return res.status(404).json({ success: false, message: "Room not found" });
+      return res.status(404).json({ success: false, message: "Room or Hotel data not found" });
     }
 
     // Amount in paise (1 INR = 100 paise)
-    const amountInPaise = Math.round(booking.totalPrice * 100);
+    const rawAmount = Number(booking.totalPrice) || 0;
+    const amountInPaise = Math.round(rawAmount * 100);
+
+    if (amountInPaise <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid booking amount" });
+    }
 
     const options = {
       amount: amountInPaise,
       currency: "INR",
-      receipt: bookingId,
+      receipt: String(bookingId).slice(0, 40),
       notes: {
-        bookingId,
-        hotelName: roomData.hotel.name,
+        bookingId: String(bookingId),
+        hotelName: String(roomData.hotel.name || "Quickstay Hotel"),
       },
     };
 
-    const order = await razorpayInstance.orders.create(options);
+    const razorpay = getRazorpayInstance();
+    const order = await razorpay.orders.create(options);
 
     // Save orderId to booking
     booking.razorpayOrderId = order.id;
@@ -52,8 +62,9 @@ export const createRazorpayOrder = async (req, res) => {
       hotelName: roomData.hotel.name,
     });
   } catch (error) {
-    console.error("Razorpay Create Order Error:", error.message);
-    res.json({ success: false, message: error.message || "Failed to create Razorpay Order" });
+    console.error("Razorpay Create Order Error:", error);
+    const errorMessage = error?.error?.description || error?.description || error?.message || "Failed to create Razorpay Order";
+    res.status(500).json({ success: false, message: errorMessage });
   }
 };
 
@@ -70,7 +81,7 @@ export const verifyRazorpayPayment = async (req, res) => {
     // Generate expected HMAC-SHA256 signature
     const bodyData = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
       .update(bodyData.toString())
       .digest("hex");
 
@@ -87,11 +98,11 @@ export const verifyRazorpayPayment = async (req, res) => {
 
       return res.json({ success: true, message: "Payment verified successfully" });
     } else {
-      return res.status(400).json({ success: false, message: "Payment verification failed" });
+      return res.status(400).json({ success: false, message: "Payment verification failed: Invalid signature" });
     }
   } catch (error) {
     console.error("Razorpay Verify Error:", error.message);
-    res.json({ success: false, message: error.message || "Payment verification failed" });
+    res.status(500).json({ success: false, message: error.message || "Payment verification failed" });
   }
 };
 
@@ -116,13 +127,13 @@ export const processRefund = async (req, res) => {
     }
 
     if (booking.isPaid && booking.razorpayPaymentId) {
-      // Process full refund with Razorpay
-      const refund = await razorpayInstance.payments.refund(booking.razorpayPaymentId, {
-        amount: Math.round(booking.totalPrice * 100),
+      const razorpay = getRazorpayInstance();
+      const refund = await razorpay.payments.refund(booking.razorpayPaymentId, {
+        amount: Math.round(Number(booking.totalPrice) * 100),
         speed: "normal",
         notes: {
           reason: "User cancelled booking",
-          bookingId,
+          bookingId: String(bookingId),
         },
       });
 
@@ -140,6 +151,6 @@ export const processRefund = async (req, res) => {
     }
   } catch (error) {
     console.error("Refund Error:", error.message);
-    res.json({ success: false, message: error.message || "Refund failed" });
+    res.status(500).json({ success: false, message: error.message || "Refund failed" });
   }
 };
