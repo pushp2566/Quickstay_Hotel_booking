@@ -72,10 +72,10 @@ const Dashboard = () => {
                                     <td className='py-3 px-4 text-gray-700 border-t border-gray-300'>{item.user?.username || 'User'}</td>
                                     <td className='py-3 px-4 text-gray-400 border-t border-gray-300 max-sm:hidden'>{item.room?.roomType || 'Room'}</td>
                                     <td className='py-3 px-4 text-gray-400 border-t border-gray-300 text-center'>{currency} {item.totalPrice}</td>
-                                    <td className='py-3 px-4  border-t border-gray-300 flex'>
-                                        <button className={`py-1 px-3 text-xs rounded-full mx-auto ${item.isPaid ? "bg-green-200 text-green-600" : "bg-amber-200 text-yellow-600"}`}>
-                                            {item.isPaid ? "Completed" : "Pending"}
-                                        </button>
+                                    <td className='py-3 px-4 border-t border-gray-300 text-center'>
+                                        <span className={`py-1 px-3 text-xs rounded-full inline-block ${item.status === "cancelled" ? "bg-gray-200 text-gray-600" : item.isPaid ? "bg-green-200 text-green-700" : "bg-amber-200 text-yellow-700"}`}>
+                                            {item.status === "cancelled" ? "Cancelled" : item.isPaid ? `Paid (${item.paymentMethod || "Razorpay"})` : "Pending"}
+                                        </span>
                                     </td>
                                 </tr>
                             ))

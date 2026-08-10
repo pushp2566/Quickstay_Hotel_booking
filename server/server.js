@@ -7,10 +7,10 @@ import userRouter from "./routes/userRoutes.js";
 import hotelRouter from "./routes/hotelRoutes.js";
 import roomRouter from "./routes/roomRoutes.js";
 import bookingRouter from "./routes/bookingRoutes.js";
+import razorpayRouter from "./routes/razorpayRoutes.js";
 import clerkWebhooks from "./controllers/clerkWebhooks.js";
+import { razorpayWebhooks } from "./controllers/razorpayWebhooks.js";
 import connectCloudinary from "./configs/cloudinary.js";
-import { stripeWebhooks } from "./controllers/stripeWebhooks.js";
-
 
 connectDB();
 connectCloudinary();
@@ -19,9 +19,9 @@ const app = express();
 const allowedOrigins = process.env.FRONTEND_URL?.split(",").map((origin) => origin.trim()).filter(Boolean);
 app.use(cors({ origin: allowedOrigins?.length ? allowedOrigins : true }));
 
-// API to listen to Stripe Webhooks
-app.post("/api/stripe", express.raw({ type: "application/json" }), stripeWebhooks);
+// API to listen to Webhooks
 app.post("/api/clerk", express.raw({ type: "application/json" }), clerkWebhooks);
+app.post("/api/razorpay/webhook", express.raw({ type: "application/json" }), razorpayWebhooks);
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -32,6 +32,7 @@ app.use("/api/user", userRouter);
 app.use("/api/hotels", hotelRouter);
 app.use("/api/rooms", roomRouter);
 app.use("/api/bookings", bookingRouter);
+app.use("/api/razorpay", razorpayRouter);
 
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;

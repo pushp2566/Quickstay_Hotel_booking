@@ -23,6 +23,9 @@ const bookingSchema = new Schema(
       default: "Pay At Hotel",
     },
     isPaid: { type: Boolean, default: false },
+    razorpayOrderId: { type: String, default: "" },
+    razorpayPaymentId: { type: String, default: "" },
+    razorpayRefundId: { type: String, default: "" },
   },
   { timestamps: true }
 );
