@@ -45,13 +45,14 @@ const MyBookings = () => {
                 order_id: data.orderId,
                 handler: async function (response) {
                     try {
+                        const freshToken = await getToken();
                         const verifyRes = await axios.post('/api/razorpay/verify-payment', {
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
                             bookingId,
                         }, {
-                            headers: { Authorization: `Bearer ${token}` }
+                            headers: { Authorization: `Bearer ${freshToken}` }
                         });
 
                         if (verifyRes.data.success) {
