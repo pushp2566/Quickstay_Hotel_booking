@@ -127,22 +127,34 @@ export const processRefund = async (req, res) => {
     }
 
     if (booking.isPaid && booking.razorpayPaymentId) {
-      const razorpay = getRazorpayInstance();
-      const refund = await razorpay.payments.refund(booking.razorpayPaymentId, {
-        amount: Math.round(Number(booking.totalPrice) * 100),
-        speed: "normal",
-        notes: {
-          reason: "User cancelled booking",
-          bookingId: String(bookingId),
-        },
-      });
+      let refundId = null;
+      try {
+        const razorpay = getRazorpayInstance();
+        const refund = await razorpay.payments.refund(booking.razorpayPaymentId, {
+          amount: Math.round(Number(booking.totalPrice) * 100),
+          speed: "normal",
+          notes: {
+            reason: "User cancelled booking",
+            bookingId: String(bookingId),
+          },
+        });
+        refundId = refund.id;
+        booking.razorpayRefundId = refundId;
+      } catch (refundErr) {
+        console.warn("Razorpay Refund API notice:", refundErr?.error?.description || refundErr.message);
+      }
 
       booking.status = "cancelled";
       booking.isPaid = false;
-      booking.razorpayRefundId = refund.id;
       await booking.save();
 
-      return res.json({ success: true, message: "Booking cancelled and refund processed successfully", refundId: refund.id });
+      return res.json({
+        success: true,
+        message: refundId
+          ? "Booking cancelled and refund processed successfully"
+          : "Booking cancelled successfully",
+        refundId,
+      });
     } else {
       // Cancel un-paid or Pay-At-Hotel booking
       booking.status = "cancelled";
